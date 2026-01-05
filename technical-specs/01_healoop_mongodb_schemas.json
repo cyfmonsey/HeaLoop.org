@@ -1,0 +1,588 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "description": "MongoDB collections and validators for HeaLoop.org Platform",
+    "purpose": "Store unstructured and semi-structured data including plan details, analysis cache, and logs",
+    "updated": "2024-01-01"
+  },
+  "collections": {
+    "plan_details": {
+      "description": "Detailed plan information including benefits, provider networks, and formularies",
+      "validator": {
+        "$jsonSchema": {
+          "bsonType": "object",
+          "required": ["plan_id", "issuer_id", "plan_year", "state"],
+          "properties": {
+            "plan_id": {
+              "bsonType": "string",
+              "description": "Unique plan identifier matching PostgreSQL"
+            },
+            "issuer_id": {
+              "bsonType": "string",
+              "description": "Insurance issuer identifier"
+            },
+            "plan_year": {
+              "bsonType": "int",
+              "minimum": 2024,
+              "description": "Year the plan is available"
+            },
+            "state": {
+              "bsonType": "string",
+              "pattern": "^[A-Z]{2}$",
+              "description": "Two-letter state code"
+            },
+            "benefits": {
+              "bsonType": "object",
+              "description": "Detailed benefit coverage information",
+              "properties": {
+                "primary_care_visit": {
+                  "bsonType": "object",
+                  "properties": {
+                    "copay": { "bsonType": ["double", "null"] },
+                    "coinsurance": { "bsonType": ["double", "null"] },
+                    "notes": { "bsonType": "string" }
+                  }
+                },
+                "specialist_visit": {
+                  "bsonType": "object",
+                  "properties": {
+                    "copay": { "bsonType": ["double", "null"] },
+                    "coinsurance": { "bsonType": ["double", "null"] },
+                    "notes": { "bsonType": "string" }
+                  }
+                },
+                "emergency_room": {
+                  "bsonType": "object",
+                  "properties": {
+                    "copay": { "bsonType": ["double", "null"] },
+                    "coinsurance": { "bsonType": ["double", "null"] },
+                    "notes": { "bsonType": "string" }
+                  }
+                },
+                "urgent_care": {
+                  "bsonType": "object",
+                  "properties": {
+                    "copay": { "bsonType": ["double", "null"] },
+                    "coinsurance": { "bsonType": ["double", "null"] },
+                    "notes": { "bsonType": "string" }
+                  }
+                },
+                "inpatient_hospital": {
+                  "bsonType": "object",
+                  "properties": {
+                    "copay_per_day": { "bsonType": ["double", "null"] },
+                    "coinsurance": { "bsonType": ["double", "null"] },
+                    "max_days_covered": { "bsonType": ["int", "null"] },
+                    "notes": { "bsonType": "string" }
+                  }
+                },
+                "outpatient_surgery": {
+                  "bsonType": "object",
+                  "properties": {
+                    "copay": { "bsonType": ["double", "null"] },
+                    "coinsurance": { "bsonType": ["double", "null"] },
+                    "notes": { "bsonType": "string" }
+                  }
+                },
+                "prescription_drugs": {
+                  "bsonType": "object",
+                  "properties": {
+                    "generic_tier1": { "bsonType": ["double", "null"] },
+                    "preferred_brand_tier2": { "bsonType": ["double", "null"] },
+                    "non_preferred_brand_tier3": { "bsonType": ["double", "null"] },
+                    "specialty_tier4": { "bsonType": ["double", "null"] },
+                    "mail_order_available": { "bsonType": "bool" },
+                    "notes": { "bsonType": "string" }
+                  }
+                },
+                "mental_health": {
+                  "bsonType": "object",
+                  "properties": {
+                    "inpatient_copay": { "bsonType": ["double", "null"] },
+                    "outpatient_copay": { "bsonType": ["double", "null"] },
+                    "notes": { "bsonType": "string" }
+                  }
+                },
+                "maternity": {
+                  "bsonType": "object",
+                  "properties": {
+                    "prenatal_copay": { "bsonType": ["double", "null"] },
+                    "delivery_copay": { "bsonType": ["double", "null"] },
+                    "postnatal_copay": { "bsonType": ["double", "null"] },
+                    "notes": { "bsonType": "string" }
+                  }
+                }
+              }
+            },
+            "provider_network": {
+              "bsonType": "object",
+              "description": "Provider network information",
+              "properties": {
+                "network_size": { "bsonType": "string", "enum": ["small", "medium", "large", "national"] },
+                "network_id": { "bsonType": "string" },
+                "major_hospitals": { "bsonType": "array", "items": { "bsonType": "string" } },
+                "providers_count": { "bsonType": "int" }
+              }
+            },
+            "formulary": {
+              "bsonType": "object",
+              "description": "Drug formulary information",
+              "properties": {
+                "formulary_id": { "bsonType": "string" },
+                "formulary_url": { "bsonType": "string" },
+                "common_drugs_covered": { "bsonType": "array", "items": { "bsonType": "string" } }
+              }
+            },
+            "quality_ratings": {
+              "bsonType": "object",
+              "properties": {
+                "overall_rating": { "bsonType": "double", "minimum": 0, "maximum": 5 },
+                "customer_service": { "bsonType": "double", "minimum": 0, "maximum": 5 },
+                "quality_of_care": { "bsonType": "double", "minimum": 0, "maximum": 5 },
+                "members_satisfaction": { "bsonType": "double", "minimum": 0, "maximum": 5 }
+              }
+            },
+            "additional_benefits": {
+              "bsonType": "array",
+              "description": "Extra benefits not typically covered",
+              "items": {
+                "bsonType": "object",
+                "properties": {
+                  "benefit_name": { "bsonType": "string" },
+                  "description": { "bsonType": "string" },
+                  "value": { "bsonType": "string" }
+                }
+              }
+            },
+            "created_at": { "bsonType": "date" },
+            "updated_at": { "bsonType": "date" }
+          }
+        }
+      },
+      "indexes": [
+        { "keys": { "plan_id": 1 }, "unique": true },
+        { "keys": { "issuer_id": 1 } },
+        { "keys": { "state": 1, "plan_year": 1 } },
+        { "keys": { "quality_ratings.overall_rating": -1 } }
+      ]
+    },
+    "analysis_cache": {
+      "description": "Cached analysis results for faster retrieval",
+      "validator": {
+        "$jsonSchema": {
+          "bsonType": "object",
+          "required": ["cache_key", "household_fingerprint", "result_data", "created_at"],
+          "properties": {
+            "cache_key": {
+              "bsonType": "string",
+              "description": "Hash of household configuration and analysis parameters"
+            },
+            "household_fingerprint": {
+              "bsonType": "string",
+              "description": "Anonymized household configuration signature"
+            },
+            "household_size": {
+              "bsonType": "int",
+              "minimum": 1
+            },
+            "state": {
+              "bsonType": "string",
+              "pattern": "^[A-Z]{2}$"
+            },
+            "income_range": {
+              "bsonType": "string",
+              "description": "Income bracket for privacy"
+            },
+            "result_data": {
+              "bsonType": "object",
+              "description": "Cached analysis result",
+              "properties": {
+                "recommended_plans": { "bsonType": "array" },
+                "subsidy_estimate": { "bsonType": "double" },
+                "best_savings": { "bsonType": "double" },
+                "scenarios": { "bsonType": "array" }
+              }
+            },
+            "access_count": {
+              "bsonType": "int",
+              "minimum": 0,
+              "description": "Number of times this cache was hit"
+            },
+            "created_at": {
+              "bsonType": "date"
+            },
+            "expires_at": {
+              "bsonType": "date",
+              "description": "Cache expiration timestamp"
+            },
+            "last_accessed_at": {
+              "bsonType": "date"
+            }
+          }
+        }
+      },
+      "indexes": [
+        { "keys": { "cache_key": 1 }, "unique": true },
+        { "keys": { "household_fingerprint": 1 } },
+        { "keys": { "state": 1 } },
+        { "keys": { "expires_at": 1 }, "expireAfterSeconds": 0 }
+      ]
+    },
+    "rules_execution_log": {
+      "description": "Log of rules engine executions for debugging and auditing",
+      "validator": {
+        "$jsonSchema": {
+          "bsonType": "object",
+          "required": ["execution_id", "household_id", "rules_executed", "execution_time_ms", "timestamp"],
+          "properties": {
+            "execution_id": {
+              "bsonType": "string",
+              "description": "Unique execution identifier"
+            },
+            "household_id": {
+              "bsonType": "string",
+              "description": "UUID of household from PostgreSQL"
+            },
+            "user_id": {
+              "bsonType": "string",
+              "description": "UUID of user from PostgreSQL"
+            },
+            "rules_executed": {
+              "bsonType": "array",
+              "description": "List of rules that were executed",
+              "items": {
+                "bsonType": "object",
+                "properties": {
+                  "rule_id": { "bsonType": "string" },
+                  "rule_name": { "bsonType": "string" },
+                  "rule_category": { "bsonType": "string" },
+                  "matched": { "bsonType": "bool" },
+                  "result": { "bsonType": "object" },
+                  "execution_time_ms": { "bsonType": "double" }
+                }
+              }
+            },
+            "input_data": {
+              "bsonType": "object",
+              "description": "Input parameters for the rules execution"
+            },
+            "output_data": {
+              "bsonType": "object",
+              "description": "Results from rules execution"
+            },
+            "execution_time_ms": {
+              "bsonType": "double",
+              "description": "Total execution time in milliseconds"
+            },
+            "errors": {
+              "bsonType": "array",
+              "description": "Any errors encountered during execution",
+              "items": {
+                "bsonType": "object",
+                "properties": {
+                  "rule_id": { "bsonType": "string" },
+                  "error_message": { "bsonType": "string" },
+                  "error_code": { "bsonType": "string" }
+                }
+              }
+            },
+            "timestamp": {
+              "bsonType": "date"
+            }
+          }
+        }
+      },
+      "indexes": [
+        { "keys": { "execution_id": 1 }, "unique": true },
+        { "keys": { "household_id": 1, "timestamp": -1 } },
+        { "keys": { "user_id": 1, "timestamp": -1 } },
+        { "keys": { "timestamp": -1 } }
+      ]
+    },
+    "user_activity_events": {
+      "description": "Detailed user activity tracking for analytics",
+      "validator": {
+        "$jsonSchema": {
+          "bsonType": "object",
+          "required": ["user_id", "event_type", "timestamp"],
+          "properties": {
+            "user_id": {
+              "bsonType": "string",
+              "description": "UUID of user from PostgreSQL"
+            },
+            "session_id": {
+              "bsonType": "string",
+              "description": "User session identifier"
+            },
+            "event_type": {
+              "bsonType": "string",
+              "enum": ["page_view", "button_click", "form_submit", "search", "filter_apply", "plan_view", "plan_compare", "analysis_start", "analysis_complete", "error"]
+            },
+            "event_category": {
+              "bsonType": "string",
+              "description": "Category for grouping events"
+            },
+            "event_data": {
+              "bsonType": "object",
+              "description": "Additional event-specific data"
+            },
+            "page_url": {
+              "bsonType": "string"
+            },
+            "referrer": {
+              "bsonType": "string"
+            },
+            "device_info": {
+              "bsonType": "object",
+              "properties": {
+                "user_agent": { "bsonType": "string" },
+                "device_type": { "bsonType": "string", "enum": ["desktop", "tablet", "mobile"] },
+                "browser": { "bsonType": "string" },
+                "os": { "bsonType": "string" }
+              }
+            },
+            "timestamp": {
+              "bsonType": "date"
+            }
+          }
+        }
+      },
+      "indexes": [
+        { "keys": { "user_id": 1, "timestamp": -1 } },
+        { "keys": { "session_id": 1 } },
+        { "keys": { "event_type": 1, "timestamp": -1 } },
+        { "keys": { "timestamp": -1 } }
+      ]
+    },
+    "marketplace_data_snapshots": {
+      "description": "Historical snapshots of marketplace data for trends and analysis",
+      "validator": {
+        "$jsonSchema": {
+          "bsonType": "object",
+          "required": ["snapshot_date", "state", "data_type", "snapshot_data"],
+          "properties": {
+            "snapshot_date": {
+              "bsonType": "date",
+              "description": "Date of the snapshot"
+            },
+            "state": {
+              "bsonType": "string",
+              "pattern": "^[A-Z]{2}$",
+              "description": "State for this snapshot"
+            },
+            "data_type": {
+              "bsonType": "string",
+              "enum": ["plan_premiums", "enrollment_stats", "issuer_participation", "subsidy_usage"],
+              "description": "Type of data being snapshotted"
+            },
+            "snapshot_data": {
+              "bsonType": "object",
+              "description": "The actual snapshot data"
+            },
+            "metadata": {
+              "bsonType": "object",
+              "properties": {
+                "source": { "bsonType": "string" },
+                "version": { "bsonType": "string" },
+                "notes": { "bsonType": "string" }
+              }
+            },
+            "created_at": {
+              "bsonType": "date"
+            }
+          }
+        }
+      },
+      "indexes": [
+        { "keys": { "snapshot_date": -1, "state": 1, "data_type": 1 } },
+        { "keys": { "state": 1, "snapshot_date": -1 } },
+        { "keys": { "data_type": 1, "snapshot_date": -1 } }
+      ]
+    },
+    "learning_content": {
+      "description": "Educational content and FAQs",
+      "validator": {
+        "$jsonSchema": {
+          "bsonType": "object",
+          "required": ["content_id", "content_type", "title", "body"],
+          "properties": {
+            "content_id": {
+              "bsonType": "string",
+              "description": "Unique content identifier"
+            },
+            "content_type": {
+              "bsonType": "string",
+              "enum": ["article", "faq", "guide", "glossary_term", "video", "infographic"],
+              "description": "Type of educational content"
+            },
+            "title": {
+              "bsonType": "string",
+              "description": "Content title"
+            },
+            "slug": {
+              "bsonType": "string",
+              "description": "URL-friendly identifier"
+            },
+            "body": {
+              "bsonType": "string",
+              "description": "Main content body (Markdown supported)"
+            },
+            "summary": {
+              "bsonType": "string",
+              "description": "Brief summary or excerpt"
+            },
+            "tags": {
+              "bsonType": "array",
+              "items": { "bsonType": "string" },
+              "description": "Content tags for categorization"
+            },
+            "category": {
+              "bsonType": "string",
+              "description": "Primary category"
+            },
+            "difficulty_level": {
+              "bsonType": "string",
+              "enum": ["beginner", "intermediate", "advanced"]
+            },
+            "related_content": {
+              "bsonType": "array",
+              "items": { "bsonType": "string" },
+              "description": "IDs of related content"
+            },
+            "views_count": {
+              "bsonType": "int",
+              "minimum": 0
+            },
+            "helpful_count": {
+              "bsonType": "int",
+              "minimum": 0
+            },
+            "not_helpful_count": {
+              "bsonType": "int",
+              "minimum": 0
+            },
+            "is_published": {
+              "bsonType": "bool",
+              "description": "Publication status"
+            },
+            "published_at": {
+              "bsonType": "date"
+            },
+            "created_at": {
+              "bsonType": "date"
+            },
+            "updated_at": {
+              "bsonType": "date"
+            }
+          }
+        }
+      },
+      "indexes": [
+        { "keys": { "content_id": 1 }, "unique": true },
+        { "keys": { "slug": 1 }, "unique": true },
+        { "keys": { "content_type": 1, "is_published": 1 } },
+        { "keys": { "category": 1, "is_published": 1 } },
+        { "keys": { "tags": 1 } },
+        { "keys": { "views_count": -1 } }
+      ]
+    },
+    "feedback_submissions": {
+      "description": "User feedback and suggestions",
+      "validator": {
+        "$jsonSchema": {
+          "bsonType": "object",
+          "required": ["feedback_type", "message", "submitted_at"],
+          "properties": {
+            "feedback_id": {
+              "bsonType": "string"
+            },
+            "user_id": {
+              "bsonType": "string",
+              "description": "Optional user ID if authenticated"
+            },
+            "feedback_type": {
+              "bsonType": "string",
+              "enum": ["bug_report", "feature_request", "general_feedback", "complaint", "praise"],
+              "description": "Type of feedback"
+            },
+            "category": {
+              "bsonType": "string",
+              "description": "Feedback category"
+            },
+            "message": {
+              "bsonType": "string",
+              "description": "Feedback message"
+            },
+            "rating": {
+              "bsonType": "int",
+              "minimum": 1,
+              "maximum": 5,
+              "description": "Optional rating"
+            },
+            "page_url": {
+              "bsonType": "string",
+              "description": "Page where feedback was submitted"
+            },
+            "contact_email": {
+              "bsonType": "string",
+              "description": "Optional contact email"
+            },
+            "attachments": {
+              "bsonType": "array",
+              "items": { "bsonType": "string" },
+              "description": "File URLs or identifiers"
+            },
+            "status": {
+              "bsonType": "string",
+              "enum": ["new", "reviewed", "in_progress", "resolved", "closed"],
+              "description": "Processing status"
+            },
+            "staff_notes": {
+              "bsonType": "array",
+              "items": {
+                "bsonType": "object",
+                "properties": {
+                  "note": { "bsonType": "string" },
+                  "staff_id": { "bsonType": "string" },
+                  "timestamp": { "bsonType": "date" }
+                }
+              }
+            },
+            "submitted_at": {
+              "bsonType": "date"
+            },
+            "resolved_at": {
+              "bsonType": "date"
+            }
+          }
+        }
+      },
+      "indexes": [
+        { "keys": { "feedback_id": 1 }, "unique": true },
+        { "keys": { "user_id": 1, "submitted_at": -1 } },
+        { "keys": { "feedback_type": 1, "status": 1 } },
+        { "keys": { "submitted_at": -1 } }
+      ]
+    }
+  },
+  "setup_commands": [
+    "// Create collections with validators",
+    "db.createCollection('plan_details', { validator: <validator_from_above> })",
+    "db.createCollection('analysis_cache', { validator: <validator_from_above> })",
+    "db.createCollection('rules_execution_log', { validator: <validator_from_above> })",
+    "db.createCollection('user_activity_events', { validator: <validator_from_above> })",
+    "db.createCollection('marketplace_data_snapshots', { validator: <validator_from_above> })",
+    "db.createCollection('learning_content', { validator: <validator_from_above> })",
+    "db.createCollection('feedback_submissions', { validator: <validator_from_above> })",
+    "",
+    "// Create indexes",
+    "// See indexes arrays in each collection definition above"
+  ],
+  "notes": {
+    "data_retention": "Analysis cache expires automatically after 30 days. User activity events and rules logs should be archived after 90 days.",
+    "scaling": "Consider sharding user_activity_events and rules_execution_log by user_id or timestamp for high-volume scenarios.",
+    "backup": "Daily backups recommended. Plan details and learning content are critical.",
+    "integration": "MongoDB user_id and household_id fields reference PostgreSQL UUID primary keys.",
+    "performance": "Compound indexes on frequently queried combinations. Monitor slow queries and add indexes as needed."
+  }
+}

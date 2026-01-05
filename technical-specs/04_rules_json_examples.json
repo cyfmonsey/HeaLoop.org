@@ -1,0 +1,599 @@
+{
+  "rules_configuration": {
+    "version": "1.0.0",
+    "description": "JSON-based rule configurations for HeaLoop.org Rules Engine",
+    "updated": "2024-01-01"
+  },
+  "rules": [
+    {
+      "rule_id": "ELIG_001",
+      "rule_name": "ACA Marketplace Basic Eligibility",
+      "category": "eligibility",
+      "description": "Determines if household qualifies for ACA Marketplace coverage with subsidies",
+      "state": null,
+      "priority": 100,
+      "effective_date": "2024-01-01",
+      "conditions": [
+        {
+          "field": "fpl_percentage",
+          "operator": "gte",
+          "value": 100,
+          "logical_operator": "AND"
+        },
+        {
+          "field": "fpl_percentage",
+          "operator": "lte",
+          "value": 400,
+          "logical_operator": "AND"
+        },
+        {
+          "field": "has_affordable_employer_coverage",
+          "operator": "eq",
+          "value": false,
+          "logical_operator": "AND"
+        },
+        {
+          "field": "is_incarcerated",
+          "operator": "eq",
+          "value": false,
+          "logical_operator": "AND"
+        }
+      ],
+      "action": {
+        "type": "set_eligibility",
+        "result": {
+          "program": "marketplace",
+          "eligible": true,
+          "subsidy_eligible": true
+        },
+        "message": "Household is eligible for ACA Marketplace coverage with premium tax credits"
+      }
+    },
+    {
+      "rule_id": "ELIG_002",
+      "rule_name": "Medicaid Expansion State Eligibility",
+      "category": "eligibility",
+      "description": "Medicaid eligibility for expansion states (up to 138% FPL)",
+      "state": null,
+      "priority": 100,
+      "effective_date": "2024-01-01",
+      "conditions": [
+        {
+          "field": "fpl_percentage",
+          "operator": "lte",
+          "value": 138,
+          "logical_operator": "AND"
+        },
+        {
+          "field": "state",
+          "operator": "in",
+          "value": ["CA", "NY", "WA", "OR", "CO", "NV", "AZ", "NM", "IL", "MI", "OH", "PA", "NJ", "MA", "CT", "VT", "NH", "ME", "MD", "DE", "VA", "NC", "KY", "LA", "AR", "MO", "IA", "MN", "WI", "ND", "SD", "MT", "ID", "AK", "HI"],
+          "logical_operator": "AND"
+        }
+      ],
+      "action": {
+        "type": "set_eligibility",
+        "result": {
+          "program": "medicaid",
+          "eligible": true,
+          "expansion": true
+        },
+        "message": "Household qualifies for Medicaid under expansion (income at or below 138% FPL)"
+      }
+    },
+    {
+      "rule_id": "ELIG_003",
+      "rule_name": "Medicaid Gap State - No Coverage",
+      "category": "eligibility",
+      "description": "Identifies households in coverage gap (non-expansion states, income below 100% FPL)",
+      "state": null,
+      "priority": 95,
+      "effective_date": "2024-01-01",
+      "conditions": [
+        {
+          "field": "fpl_percentage",
+          "operator": "lt",
+          "value": 100,
+          "logical_operator": "AND"
+        },
+        {
+          "field": "state",
+          "operator": "not_in",
+          "value": ["CA", "NY", "WA", "OR", "CO", "NV", "AZ", "NM", "IL", "MI", "OH", "PA", "NJ", "MA", "CT", "VT", "NH", "ME", "MD", "DE", "VA", "NC", "KY", "LA", "AR", "MO", "IA", "MN", "WI", "ND", "SD", "MT", "ID", "AK", "HI"],
+          "logical_operator": "AND"
+        }
+      ],
+      "action": {
+        "type": "set_warning",
+        "result": {
+          "program": "none",
+          "eligible": false,
+          "in_coverage_gap": true
+        },
+        "message": "WARNING: You are in the Medicaid coverage gap. Your state has not expanded Medicaid and your income is below the Marketplace subsidy threshold."
+      }
+    },
+    {
+      "rule_id": "ELIG_004",
+      "rule_name": "CHIP Eligibility for Children",
+      "category": "eligibility",
+      "description": "Children's Health Insurance Program eligibility",
+      "state": null,
+      "priority": 90,
+      "effective_date": "2024-01-01",
+      "conditions": [
+        {
+          "field": "has_children_under_19",
+          "operator": "eq",
+          "value": true,
+          "logical_operator": "AND"
+        },
+        {
+          "field": "fpl_percentage",
+          "operator": "between",
+          "value": [138, 400],
+          "logical_operator": "AND"
+        }
+      ],
+      "action": {
+        "type": "set_eligibility",
+        "result": {
+          "program": "chip",
+          "eligible": true,
+          "applies_to": "children"
+        },
+        "message": "Children in household may qualify for CHIP coverage"
+      }
+    },
+    {
+      "rule_id": "SUB_001",
+      "rule_name": "Premium Tax Credit Calculation",
+      "category": "subsidy",
+      "description": "Calculate Advance Premium Tax Credit (APTC) amount",
+      "state": null,
+      "priority": 100,
+      "effective_date": "2024-01-01",
+      "conditions": [
+        {
+          "field": "fpl_percentage",
+          "operator": "between",
+          "value": [100, 400],
+          "logical_operator": "AND"
+        },
+        {
+          "field": "marketplace_eligible",
+          "operator": "eq",
+          "value": true,
+          "logical_operator": "AND"
+        }
+      ],
+      "action": {
+        "type": "calculate_subsidy",
+        "result": {
+          "subsidy_type": "aptc",
+          "calculation_method": "second_lowest_silver_benchmark"
+        },
+        "message": "Calculate APTC based on income contribution percentage and benchmark plan"
+      }
+    },
+    {
+      "rule_id": "SUB_002",
+      "rule_name": "Cost Sharing Reduction Level 94",
+      "category": "subsidy",
+      "description": "Highest CSR level for lowest income households",
+      "state": null,
+      "priority": 100,
+      "effective_date": "2024-01-01",
+      "conditions": [
+        {
+          "field": "fpl_percentage",
+          "operator": "lte",
+          "value": 150,
+          "logical_operator": "AND"
+        },
+        {
+          "field": "marketplace_eligible",
+          "operator": "eq",
+          "value": true,
+          "logical_operator": "AND"
+        }
+      ],
+      "action": {
+        "type": "set_csr_level",
+        "result": {
+          "csr_level": "94",
+          "av_percentage": 94,
+          "requires_silver_plan": true
+        },
+        "message": "Eligible for 94% actuarial value Silver plan (highest cost-sharing reductions)"
+      }
+    },
+    {
+      "rule_id": "SUB_003",
+      "rule_name": "Cost Sharing Reduction Level 87",
+      "category": "subsidy",
+      "description": "Medium CSR level",
+      "state": null,
+      "priority": 90,
+      "effective_date": "2024-01-01",
+      "conditions": [
+        {
+          "field": "fpl_percentage",
+          "operator": "between",
+          "value": [150, 200],
+          "logical_operator": "AND"
+        },
+        {
+          "field": "marketplace_eligible",
+          "operator": "eq",
+          "value": true,
+          "logical_operator": "AND"
+        }
+      ],
+      "action": {
+        "type": "set_csr_level",
+        "result": {
+          "csr_level": "87",
+          "av_percentage": 87,
+          "requires_silver_plan": true
+        },
+        "message": "Eligible for 87% actuarial value Silver plan with cost-sharing reductions"
+      }
+    },
+    {
+      "rule_id": "LOOP_001",
+      "rule_name": "COBRA Retroactive Election Strategy",
+      "category": "loophole",
+      "description": "Optimize COBRA timing by delaying election until medical expenses occur",
+      "state": null,
+      "priority": 80,
+      "effective_date": "2024-01-01",
+      "conditions": [
+        {
+          "field": "is_cobra_eligible",
+          "operator": "eq",
+          "value": true,
+          "logical_operator": "AND"
+        },
+        {
+          "field": "days_since_job_loss",
+          "operator": "lte",
+          "value": 60,
+          "logical_operator": "AND"
+        },
+        {
+          "field": "has_high_expected_medical_costs",
+          "operator": "eq",
+          "value": false,
+          "logical_operator": "AND"
+        }
+      ],
+      "action": {
+        "type": "identify_opportunity",
+        "result": {
+          "opportunity_type": "cobra_timing",
+          "potential_savings": 2000,
+          "risk_level": "medium",
+          "requirements": [
+            "Must be within 60-day COBRA election period",
+            "Can afford to pay out-of-pocket for routine care",
+            "Willing to take on risk of catastrophic coverage gap"
+          ],
+          "strategy": "Delay COBRA election and enroll retroactively only if major medical expenses occur"
+        },
+        "message": "COBRA TIMING OPPORTUNITY: You can delay your COBRA election for up to 60 days and elect retroactively if needed. This saves premium costs if you remain healthy."
+      }
+    },
+    {
+      "rule_id": "LOOP_002",
+      "rule_name": "Medicaid Spend-Down Strategy",
+      "category": "loophole",
+      "description": "Qualify for Medicaid by spending down income on medical expenses",
+      "state": null,
+      "priority": 75,
+      "effective_date": "2024-01-01",
+      "conditions": [
+        {
+          "field": "fpl_percentage",
+          "operator": "between",
+          "value": [138, 200],
+          "logical_operator": "AND"
+        },
+        {
+          "field": "has_high_medical_expenses",
+          "operator": "eq",
+          "value": true,
+          "logical_operator": "AND"
+        },
+        {
+          "field": "state_allows_spend_down",
+          "operator": "eq",
+          "value": true,
+          "logical_operator": "AND"
+        }
+      ],
+      "action": {
+        "type": "identify_opportunity",
+        "result": {
+          "opportunity_type": "medicaid_spend_down",
+          "potential_savings": 5000,
+          "risk_level": "low",
+          "requirements": [
+            "State allows Medically Needy Medicaid pathway",
+            "Have documented medical expenses",
+            "Income slightly above Medicaid limit"
+          ],
+          "strategy": "Apply medical expense deductions to lower countable income below Medicaid threshold"
+        },
+        "message": "MEDICAID SPEND-DOWN: Your state allows you to 'spend down' excess income on medical bills to qualify for Medicaid. This could save thousands compared to Marketplace plans."
+      }
+    },
+    {
+      "rule_id": "LOOP_003",
+      "rule_name": "Silver Plan CSR Optimization",
+      "category": "loophole",
+      "description": "Maximize value by choosing Silver plan when CSR-eligible",
+      "state": null,
+      "priority": 85,
+      "effective_date": "2024-01-01",
+      "conditions": [
+        {
+          "field": "fpl_percentage",
+          "operator": "lte",
+          "value": 250,
+          "logical_operator": "AND"
+        },
+        {
+          "field": "marketplace_eligible",
+          "operator": "eq",
+          "value": true,
+          "logical_operator": "AND"
+        }
+      ],
+      "action": {
+        "type": "identify_opportunity",
+        "result": {
+          "opportunity_type": "csr_silver_optimization",
+          "potential_savings": 3000,
+          "risk_level": "none",
+          "requirements": [
+            "Income at or below 250% FPL",
+            "Enroll in Silver plan (not Bronze/Gold/Platinum)"
+          ],
+          "strategy": "Choose Silver plan to access Cost-Sharing Reductions, which effectively make it better than Gold or Platinum plans at lower cost"
+        },
+        "message": "CSR OPTIMIZATION: With your income level, a Silver plan with cost-sharing reductions provides BETTER coverage than Gold/Platinum plans at LOWER cost. This is the best value."
+      }
+    },
+    {
+      "rule_id": "LOOP_004",
+      "rule_name": "Family Glitch Workaround",
+      "category": "loophole",
+      "description": "Family members may qualify for Marketplace subsidies even if employee has employer coverage",
+      "state": null,
+      "priority": 90,
+      "effective_date": "2024-01-01",
+      "conditions": [
+        {
+          "field": "has_employer_coverage_individual_only",
+          "operator": "eq",
+          "value": true,
+          "logical_operator": "AND"
+        },
+        {
+          "field": "family_coverage_unaffordable",
+          "operator": "eq",
+          "value": true,
+          "logical_operator": "AND"
+        },
+        {
+          "field": "household_size",
+          "operator": "gt",
+          "value": 1,
+          "logical_operator": "AND"
+        }
+      ],
+      "action": {
+        "type": "identify_opportunity",
+        "result": {
+          "opportunity_type": "family_glitch_workaround",
+          "potential_savings": 4000,
+          "risk_level": "low",
+          "requirements": [
+            "Employee coverage is affordable for individual",
+            "Family coverage exceeds affordability threshold",
+            "Family members are not offered coverage directly"
+          ],
+          "strategy": "Employee takes employer coverage; family members enroll in Marketplace with subsidies"
+        },
+        "message": "FAMILY GLITCH WORKAROUND: While your employer coverage is affordable for you, family coverage is not. Your family members may qualify for subsidized Marketplace coverage separately."
+      }
+    },
+    {
+      "rule_id": "LOOP_005",
+      "rule_name": "Dual Eligibility Detection",
+      "category": "loophole",
+      "description": "Household members may qualify for different programs simultaneously",
+      "state": null,
+      "priority": 85,
+      "effective_date": "2024-01-01",
+      "conditions": [
+        {
+          "field": "has_elderly_members",
+          "operator": "eq",
+          "value": true,
+          "logical_operator": "OR"
+        },
+        {
+          "field": "has_disabled_members",
+          "operator": "eq",
+          "value": true,
+          "logical_operator": "OR"
+        },
+        {
+          "field": "fpl_percentage",
+          "operator": "lte",
+          "value": 138,
+          "logical_operator": "AND"
+        }
+      ],
+      "action": {
+        "type": "identify_opportunity",
+        "result": {
+          "opportunity_type": "dual_eligibility",
+          "potential_savings": 6000,
+          "risk_level": "none",
+          "requirements": [
+            "Age 65+ or disabled",
+            "Low income (typically below 138% FPL)"
+          ],
+          "strategy": "Enroll in both Medicare and Medicaid to maximize coverage and minimize costs"
+        },
+        "message": "DUAL ELIGIBILITY: You may qualify for both Medicare and Medicaid simultaneously, providing comprehensive coverage with minimal out-of-pocket costs."
+      }
+    },
+    {
+      "rule_id": "WARN_001",
+      "rule_name": "Subsidy Cliff Warning",
+      "category": "warning",
+      "description": "Alert when income is near 400% FPL threshold",
+      "state": null,
+      "priority": 100,
+      "effective_date": "2024-01-01",
+      "conditions": [
+        {
+          "field": "fpl_percentage",
+          "operator": "between",
+          "value": [395, 405],
+          "logical_operator": "AND"
+        }
+      ],
+      "action": {
+        "type": "generate_warning",
+        "result": {
+          "severity": "critical",
+          "category": "subsidy_cliff"
+        },
+        "message": "SUBSIDY CLIFF WARNING: Your income is very close to the 400% FPL cutoff. A small income increase could result in losing ALL subsidies (potentially $5,000-$15,000 annually). Consider income adjustment strategies."
+      }
+    },
+    {
+      "rule_id": "WARN_002",
+      "rule_name": "Special Enrollment Period Expiration",
+      "category": "warning",
+      "description": "Alert when SEP is about to expire",
+      "state": null,
+      "priority": 100,
+      "effective_date": "2024-01-01",
+      "conditions": [
+        {
+          "field": "in_sep",
+          "operator": "eq",
+          "value": true,
+          "logical_operator": "AND"
+        },
+        {
+          "field": "days_until_sep_end",
+          "operator": "lte",
+          "value": 14,
+          "logical_operator": "AND"
+        }
+      ],
+      "action": {
+        "type": "generate_warning",
+        "result": {
+          "severity": "critical",
+          "category": "enrollment_deadline"
+        },
+        "message": "URGENT: Your Special Enrollment Period expires in less than 2 weeks. You must enroll before the deadline or wait until the next Open Enrollment Period."
+      }
+    },
+    {
+      "rule_id": "ENRL_001",
+      "rule_name": "Open Enrollment Period",
+      "category": "enrollment",
+      "description": "Check if currently in Open Enrollment",
+      "state": null,
+      "priority": 100,
+      "effective_date": "2024-01-01",
+      "conditions": [
+        {
+          "field": "current_date",
+          "operator": "between",
+          "value": ["2024-11-01", "2025-01-15"],
+          "logical_operator": "AND"
+        }
+      ],
+      "action": {
+        "type": "set_enrollment_status",
+        "result": {
+          "can_enroll": true,
+          "enrollment_type": "open_enrollment",
+          "deadline": "2025-01-15"
+        },
+        "message": "Open Enrollment is active. You can enroll in or change Marketplace coverage."
+      }
+    },
+    {
+      "rule_id": "ENRL_002",
+      "rule_name": "Special Enrollment - Job Loss",
+      "category": "enrollment",
+      "description": "Qualifies for SEP due to job loss and coverage loss",
+      "state": null,
+      "priority": 90,
+      "effective_date": "2024-01-01",
+      "conditions": [
+        {
+          "field": "lost_job_based_coverage",
+          "operator": "eq",
+          "value": true,
+          "logical_operator": "AND"
+        },
+        {
+          "field": "days_since_coverage_loss",
+          "operator": "lte",
+          "value": 60,
+          "logical_operator": "AND"
+        }
+      ],
+      "action": {
+        "type": "set_enrollment_status",
+        "result": {
+          "can_enroll": true,
+          "enrollment_type": "sep_job_loss",
+          "sep_end_date": "calculated_60_days_from_event"
+        },
+        "message": "You qualify for a 60-day Special Enrollment Period due to job-based coverage loss."
+      }
+    }
+  ],
+  "rule_categories": {
+    "eligibility": "Determines if household/members qualify for programs",
+    "subsidy": "Calculates subsidy amounts and cost-sharing reductions",
+    "enrollment": "Checks enrollment period eligibility",
+    "coverage": "Evaluates coverage options and requirements",
+    "loophole": "Identifies optimization opportunities and strategies",
+    "warning": "Generates alerts about potential issues",
+    "tax": "Tax credit and filing requirement rules",
+    "compliance": "Regulatory compliance checks"
+  },
+  "operators": {
+    "eq": "Equal to",
+    "ne": "Not equal to",
+    "gt": "Greater than",
+    "gte": "Greater than or equal to",
+    "lt": "Less than",
+    "lte": "Less than or equal to",
+    "in": "Value is in array",
+    "not_in": "Value is not in array",
+    "contains": "Array/string contains value",
+    "between": "Value is between two numbers (inclusive)"
+  },
+  "notes": {
+    "rule_execution": "Rules are executed in priority order. Higher priority (larger number) executes first.",
+    "state_specific": "Rules with null state are federal/national. State-specific rules override federal when applicable.",
+    "date_handling": "All dates should be in ISO 8601 format (YYYY-MM-DD).",
+    "updates": "Rules should be versioned and audited. Never delete rules, only deactivate with end_date.",
+    "testing": "All rules should have corresponding test cases with known inputs and expected outputs."
+  }
+}
